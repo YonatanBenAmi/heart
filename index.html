@@ -7,10 +7,14 @@
 
 <!-- Noto Sans Hebrew from Google (fallbacks provided). 
      For true offline font hosting - host the font locally and update @font-face. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Inter:wght@700&family=Josefin+Sans:wght@200&family=Playpen+Sans+Hebrew:wght@100..800&family=Poppins:wght@100&family=Rubik+Iso&display=swap" rel="stylesheet">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@300;400;700&display=swap" rel="stylesheet">
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Inter:wght@700&family=Josefin+Sans:wght@200&family=Playpen+Sans+Hebrew:wght@100..800&family=Poppins:wght@100&family=Rubik+Iso&display=swap');
 :root{
   --gold: #ffd700;
   --light-pink: #ffd1e6;
@@ -67,6 +71,18 @@ html,body {
   justify-content:center;
   padding:20px;
   z-index:1;
+}
+
+h1{
+  position: fixed;
+  top: 10px;
+  color: #ffd700;
+}
+.inter-h1 {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: normal;
 }
 
 /*heart wrapper*/
@@ -293,7 +309,9 @@ html,body {
 <div class="bg-wrapper" id="bgWrapper"></div>
 <div class="bg-overlay"></div>
 
+
 <div class="container">
+  <h1 class="inter-h1">חני ויונתן מתארסים</h1>
   <div class="heart-wrap" aria-hidden="false">
     <!-- SVG Heart with clip path for fill -->
     <svg class="heart-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="לב ספירה">
