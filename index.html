@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ספירת אחורה לאירוסין — Countdown</title>
+
+<!-- Noto Sans Hebrew from Google (fallbacks provided). 
+     For true offline font hosting - host the font locally and update @font-face. -->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@300;400;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --gold: #ffd700;
+  --light-pink: #ffd1e6;
+  --fuchsia: #ff00aa;
+  --bg-grad-start: #e6c27a;
+  --bg-grad-end: #7b4b2b;
+  --heart-opacity: 0.06; /* 8-10% */
+  --heart-fill-opacity: 0.16; /* 20-25% */
+  --glass-border: rgba(255,215,0,0.45);
+  --glass-bg: rgba(255,255,255,0.04);
+  --gold-strong: rgba(255,215,0,1);
+  --text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  font-family: 'Noto Sans Hebrew', "Arial", "Helvetica", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* { box-sizing: border-box; }
+html,body {
+  height:100%;
+  margin:0;
+  background: linear-gradient(180deg, var(--bg-grad-start), var(--bg-grad-end));
+  font-size:16px;
+  color: #fff;
+  -webkit-tap-highlight-color: transparent;
+  overflow:hidden;
+}
+
+/* background wrapper that can be replaced by uploaded image */
+.bg-wrapper{
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transition: background 300ms ease;
+  filter: saturate(1.05);
+}
+
+/* subtle overlay so gradient still visible */
+.bg-overlay{
+  position: fixed; inset:0; z-index:0;
+  background: linear-gradient(180deg, rgba(255,241,224,0.05), rgba(0,0,0,0.08));
+  pointer-events:none;
+}
+
+/* main container */
+.container{
+  position:relative;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:1;
+}
+
+/*heart wrapper*/
+.heart-wrap{
+  width:95vmin;
+  height:95vmin;
+  max-width:95vmin;
+  max-height:95vmin;
+  display:grid;
+  place-items:center;
+  position:relative;
+}
+
+
+
+/* big SVG heart, with glow and border */
+.heart-svg{
+  width:100%;
+  height:100%;
+  display:block;
+  position:relative;
+  filter: drop-shadow(0 10px 30px rgba(0,0,0,0.6));
+}
+
+/* outer gold glowing border */
+.heart-border{
+  stroke: url(#goldGrad);
+  stroke-width:6;
+  stroke-linejoin:round;
+  fill: none;
+  filter: blur(0.6px) drop-shadow(0 0 14px rgba(255,215,0,0.55));
+  opacity:0.95;
+}
+
+/* translucent glass heart background */
+.heart-bg{
+  fill: rgba(255,255,255,var(--heart-opacity));
+  stroke: rgba(255,215,0,0.18);
+  stroke-width:2;
+}
+
+/* filling gradient is applied as a rect mask inside the heart via clipPath */
+.heart-fill{
+  fill: url(#fillGrad);
+  opacity: var(--heart-fill-opacity);
+  mix-blend-mode:screen;
+  transition: all 800ms cubic-bezier(.2,.9,.2,1);
+}
+
+/* center panel inside heart for counters */
+.center-panel{
+  position:absolute;
+  inset: 33% 33% 33% 33%;
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap:15px;
+  place-items:center;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+/* single counter box */
+.counter{
+  width: 100%;
+  height: 100%;
+  min-width: 50px;
+  min-height: 50px;
+  border-radius: 12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  background: var(--glass-bg);
+  border: 1.8px solid var(--glass-border);
+  backdrop-filter: blur(6px) saturate(1.1);
+  -webkit-backdrop-filter: blur(6px) saturate(1.1);
+  padding:10px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+
+/* number style */
+.value{
+  font-size: clamp(1.6rem, 5vmin, 4.8rem);
+  font-weight:700;
+  color: var(--gold);
+  text-shadow: var(--text-shadow);
+  letter-spacing: 0.04em;
+  animation: pulse 1.6s infinite;
+}
+
+/* Hebrew label */
+.label{
+  font-size: clamp(.8rem, 2vmin, 1.2rem);
+  margin-top:6px;
+  opacity:0.95;
+  color: #fff;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+}
+
+/* pulse animation */
+@keyframes pulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(255,215,0,0.0)); }
+  50% { transform: scale(1.04); filter: drop-shadow(0 6px 20px rgba(255,215,0,0.18)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(255,215,0,0.0)); }
+}
+
+/* glow sparkles when above 60% */
+.sparkle {
+  position:absolute;
+  pointer-events:none;
+  width:100%;
+  height:100%;
+  inset:0;
+  z-index:3;
+  opacity:0;
+  transition: opacity 400ms ease;
+}
+.sparkle.show { opacity:1; }
+
+/* small sparkle animation */
+.sparkle .s {
+  position:absolute;
+  font-size:16px;
+  opacity:0;
+  animation: sparkleAnim 1.6s linear infinite;
+  transform-origin:center;
+}
+@keyframes sparkleAnim {
+  0% { transform: translateY(0) scale(.8); opacity:0; }
+  20% { opacity:1; transform: translateY(-6px) scale(1.05); }
+  100% { transform: translateY(-30px) scale(.6); opacity:0; }
+}
+
+/* control bar */
+.controls{
+  position: absolute;
+  bottom: 18px;
+  left: 18px;
+  display:flex;
+  gap:10px;
+  z-index:4;
+  direction: ltr; /* buttons left-to-right */
+}
+.btn {
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,215,0,0.28);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor:pointer;
+  font-weight:600;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+.btn:hover { transform: translateY(-2px); transition: transform 160ms ease; }
+
+/* responsive tweaks */
+@media (max-width:720px){
+  .container { padding:8px; }
+  .center-panel { gap:8px; inset: 8% 8% 8% 8%; }
+  .counter { min-width:6; min-height:60px; border-radius:10px; padding:8px; }
+}
+
+/* modal styles (RTL compatible) */
+.modal-backdrop{
+  position:fixed; inset:0; z-index:100;
+  display:none;
+  align-items:center; justify-content:center;
+  background: rgba(0,0,0,0.6);
+}
+.modal-backdrop.show { display:flex; }
+.modal {
+  width: min(720px, 92%);
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.06));
+  border-radius:12px;
+  border:1px solid rgba(255,215,0,0.18);
+  padding:18px;
+  box-shadow: 0 14px 50px rgba(0,0,0,0.6);
+  color:#fff;
+}
+.modal h2 { margin:0 0 6px 0; font-size:1.2rem; }
+.modal label { display:block; margin:8px 0 6px 0; font-weight:600; }
+.modal input, .modal select {
+  width:100%;
+  padding:10px;
+  margin-bottom:8px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  color:#fff;
+}
+
+/* celebration message */
+.celebrate-msg{
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 200;
+  display: none;
+  background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,241,224,0.03));
+  padding: 12px 16px;
+  border-radius: 12px;
+  border:1px solid rgba(255,215,0,0.2);
+  font-weight:700;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.celebrate-msg.show { display:block; animation: pop .6s ease; }
+@keyframes pop { from { transform: translateY(-8px) scale(.96); opacity:0 } to { transform:none; opacity:1 } }
+
+/* small footer for credits / reset */
+.footer {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 4;
+  color: rgba(255,255,255,0.9);
+  font-size: .9rem;
+  opacity: 0.9;
+}
+</style>
+</head>
+<body>
+
+<div class="bg-wrapper" id="bgWrapper"></div>
+<div class="bg-overlay"></div>
+
+<div class="container">
+  <div class="heart-wrap" aria-hidden="false">
+    <!-- SVG Heart with clip path for fill -->
+    <svg class="heart-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="לב ספירה">
+      <defs>
+        <linearGradient id="goldGrad" x1="0" x2="1">
+          <stop offset="0" stop-color="#fff7c6"/>
+          <stop offset="0.6" stop-color="#ffd700"/>
+          <stop offset="1" stop-color="#ffbf00"/>
+        </linearGradient>
+        <linearGradient id="fillGrad" x1="0" x2="1" y1="1" y2="0">
+          <stop offset="0" stop-color="#ffd7a6"/>
+          <stop offset="0.5" stop-color="#ff9ccf"/>
+          <stop offset="1" stop-color="#ff00aa"/>
+        </linearGradient>
+
+        <!-- define heart shape as path -->
+        <clipPath id="heartClip">
+          <path d="M50 91
+                   C50 91 11 66 11 39
+                   C11 22 27 11 41 22
+                   C50 29 50 29 50 29
+                   C50 29 50 29 59 22
+                   C73 11 89 22 89 39
+                   C89 66 50 91 50 91 Z"/>
+        </clipPath>
+
+      </defs>
+
+      <!-- heart background & border -->
+      <path class="heart-bg" d="M50 91
+                   C50 91 11 66 11 39
+                   C11 22 27 11 41 22
+                   C50 29 50 29 50 29
+                   C50 29 50 29 59 22
+                   C73 11 89 22 89 39
+                   C89 66 50 91 50 91 Z"/>
+      <path class="heart-border" d="M50 91
+                   C50 91 11 66 11 39
+                   C11 22 27 11 41 22
+                   C50 29 50 29 50 29
+                   C50 29 50 29 59 22
+                   C73 11 89 22 89 39
+                   C89 66 50 91 50 91 Z"/>
+
+      <!-- filling rect which will be clipped by the heartClip (we change its y/height via JS) -->
+      <g clip-path="url(#heartClip)">
+        <rect id="fillRect" x="0" y="100" width="100" height="0" class="heart-fill"></rect>
+      </g>
+    </svg>
+
+    <!-- sparkle overlay for >60% -->
+    <div class="sparkle" id="sparkle" aria-hidden="true"></div>
+
+    <!-- center counters 2x2 -->
+    <div class="center-panel" role="region" aria-label="ספירה לאחור">
+      <div class="counter">
+        <div class="value" id="days">--</div>
+        <div class="label">ימים</div>
+      </div>
+      <div class="counter">
+        <div class="value" id="hours">--</div>
+        <div class="label">שעות</div>
+      </div>
+      <div class="counter">
+        <div class="value" id="minutes">--</div>
+        <div class="label">דקות</div>
+      </div>
+      <div class="counter">
+        <div class="value" id="seconds">--</div>
+        <div class="label">שניות</div>
+      </div>
+    </div>
+
+    <!-- celebration message -->
+    <div class="celebrate-msg" id="celebrateMsg" role="status" aria-live="polite">
+      היום זה היום! מזל טוב לאירוסין 💍🎉
+    </div>
+
+  </div>
+
+  <!-- controls -->
+  <div class="controls" role="toolbar" aria-label="בקרות">
+    <label class="btn" for="uploadInput" title="העלאת רקע">העלה רקע</label>
+    <input id="uploadInput" type="file" accept="image/*" style="display:none">
+    <button class="btn" id="changeDateBtn" title="שנה תאריך">שנה תאריך</button>
+    <button class="btn" id="resetBtn" title="איפוס">איפוס</button>
+  </div>
+
+  <div class="footer">הגדרות נשמרות ב-Cookies ל-30 יום</div>
+</div>
+
+<!-- modal for date/time -->
+<div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal" role="document">
+    <h2>שנה תאריך ושעה</h2>
+    <label for="dateInput">בחר תאריך (יום/חודש/שנה):</label>
+    <input id="dateInput" type="date" />
+    <label for="timeInput">בחר שעה:</label>
+    <input id="timeInput" type="time" />
+    <label for="countSpan">אורך ספירה (ימים) — אופציונלי (ברירת מחדל 30):</label>
+    <input id="countSpan" type="number" min="1" max="365" placeholder="30" />
+    <div style="display:flex; gap:10px; margin-top:8px; justify-content:flex-start;">
+      <button class="btn" id="saveDateBtn">שמור</button>
+      <button class="btn" id="cancelDateBtn">ביטול</button>
+    </div>
+    <p style="opacity:0.9; margin-top:10px; font-size:.92rem;">ברירת מחדל: 16/09/2025 19:00</p>
+  </div>
+</div>
+
+<!-- confetti container -->
+<canvas id="confettiCanvas" style="position:fixed; inset:0; pointer-events:none; z-index:210; display:none;"></canvas>
+
+<script>
+/* ------------------------------
+   Utilities: Cookies (30 days)
+   ------------------------------ */
+function setCookie(name, value, days=30){
+  try {
+    const d = new Date();
+    d.setTime(d.getTime() + (days*24*60*60*1000));
+    const expires = "expires="+ d.toUTCString();
+    document.cookie = name + "=" + encodeURIComponent(value) + ";" + expires + ";path=/;SameSite=Lax";
+  } catch(e){ console.warn("Cookie set failed", e); }
+}
+function getCookie(name){
+  const cname = name + "=";
+  const ca = document.cookie.split(';');
+  for(let i=0;i<ca.length;i++){
+    let c = ca[i].trim();
+    if(c.indexOf(cname) === 0) return decodeURIComponent(c.substring(cname.length,c.length));
+  }
+  return null;
+}
+function eraseCookie(name){
+  document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+}
+
+/* ------------------------------
+   DOM refs
+   ------------------------------ */
+const daysEl = document.getElementById('days');
+const hoursEl = document.getElementById('hours');
+const minutesEl = document.getElementById('minutes');
+const secondsEl = document.getElementById('seconds');
+const fillRect = document.getElementById('fillRect');
+const sparkle = document.getElementById('sparkle');
+const bgWrapper = document.getElementById('bgWrapper');
+const uploadInput = document.getElementById('uploadInput');
+const changeDateBtn = document.getElementById('changeDateBtn');
+const resetBtn = document.getElementById('resetBtn');
+const modalBackdrop = document.getElementById('modalBackdrop');
+const dateInput = document.getElementById('dateInput');
+const timeInput = document.getElementById('timeInput');
+const countSpan = document.getElementById('countSpan');
+const saveDateBtn = document.getElementById('saveDateBtn');
+const cancelDateBtn = document.getElementById('cancelDateBtn');
+const celebrateMsg = document.getElementById('celebrateMsg');
+const confettiCanvas = document.getElementById('confettiCanvas');
+
+let targetDate = null;
+let startDate = null; // the start of the counting period
+let totalDays = 30;
+
+/* ------------------------------
+   Defaults: default target 16/9/2025 19:00
+   ------------------------------ */
+function defaultTarget(){
+  // Note: months are 0-indexed for Date constructor but not for input type=date
+  const d = new Date(2025, 8, 16, 19, 0, 0); // 16 Sep 2025 19:00
+  return d;
+}
+
+/* ------------------------------
+   Load saved settings from cookies
+   ------------------------------ */
+function loadSettings(){
+  // background (data URL)
+  const bgData = getCookie('engage_bg');
+  if(bgData){
+    // apply as background image
+    bgWrapper.style.backgroundImage = 'url("'+bgData+'")';
+  } else {
+    // default subtle texture using CSS gradient (keeps background visible)
+    bgWrapper.style.backgroundImage = '';
+  }
+
+  // target timestamp
+  const targetRaw = getCookie('engage_target');
+  const startRaw = getCookie('engage_start');
+  const spanRaw = getCookie('engage_span');
+
+  if(targetRaw){
+    const t = new Date(parseInt(targetRaw,10));
+    if(!isNaN(t)) targetDate = t;
+  }
+  if(startRaw){
+    const s = new Date(parseInt(startRaw,10));
+    if(!isNaN(s)) startDate = s;
+  }
+  if(spanRaw){
+    const s = parseInt(spanRaw,10);
+    if(!isNaN(s) && s>0) totalDays = s;
+  }
+
+  // if no target defined, set default
+  if(!targetDate){
+    targetDate = defaultTarget();
+    // choose default start as target - 30 days (so fill works as example)
+    startDate = new Date(targetDate.getTime() - (30*24*60*60*1000));
+    totalDays = 30;
+    saveSettings(); // persist defaults so UI is consistent
+  }
+
+  // if no start date, default to target - totalDays
+  if(!startDate){
+    startDate = new Date(targetDate.getTime() - (totalDays*24*60*60*1000));
+  }
+}
+function saveSettings(){
+  setCookie('engage_target', String(targetDate.getTime()), 30);
+  setCookie('engage_start', String(startDate.getTime()), 30);
+  setCookie('engage_span', String(totalDays), 30);
+}
+
+/* ------------------------------
+   Resize and limit uploaded image, convert to dataURL, save to cookie
+   ------------------------------ */
+function imageFileToDataURL(file, maxSize=900, quality=0.66){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const fr = new FileReader();
+    fr.onload = () => {
+      img.onload = () => {
+        // resize preserving aspect ratio
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if(Math.max(w,h) > maxSize){
+          const ratio = maxSize / Math.max(w,h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img,0,0,w,h);
+        try {
+          const dataURL = canvas.toDataURL('image/jpeg', quality);
+          resolve(dataURL);
+        } catch(e){
+          reject(e);
+        }
+      }
+      img.onerror = () => reject(new Error('image load error'));
+      img.src = fr.result;
+    };
+    fr.onerror = () => reject(new Error('file read error'));
+    fr.readAsDataURL(file);
+  });
+}
+
+/* ------------------------------
+   Event: upload background
+   ------------------------------ */
+uploadInput.addEventListener('change', async (ev) => {
+  const file = ev.target.files && ev.target.files[0];
+  if(!file) return;
+  try {
+    // convert & resize to reduce cookie size
+    const dataURL = await imageFileToDataURL(file, 900, 0.66);
+    bgWrapper.style.backgroundImage = 'url("'+dataURL+'")';
+    // set cookie
+    setCookie('engage_bg', dataURL, 30);
+    alert('רקע נשמר בהצלחה לזמן של 30 יום.');
+  } catch(e){
+    console.error(e);
+    alert('שגיאה בהעלאת התמונה — נסה בגודל / פורמט אחר.');
+  } finally {
+    uploadInput.value = '';
+  }
+});
+
+/* ------------------------------
+   Modal: change date/time
+   ------------------------------ */
+changeDateBtn.addEventListener('click', () => {
+  // prefill inputs from current targetDate
+  const t = targetDate || defaultTarget();
+  // format date to yyyy-mm-dd
+  const y = t.getFullYear();
+  const m = String(t.getMonth()+1).padStart(2,'0');
+  const d = String(t.getDate()).padStart(2,'0');
+  dateInput.value = `${y}-${m}-${d}`;
+  const hh = String(t.getHours()).padStart(2,'0');
+  const mm = String(t.getMinutes()).padStart(2,'0');
+  timeInput.value = `${hh}:${mm}`;
+  countSpan.value = totalDays;
+  modalBackdrop.classList.add('show');
+  modalBackdrop.setAttribute('aria-hidden','false');
+});
+
+cancelDateBtn.addEventListener('click', () => {
+  modalBackdrop.classList.remove('show');
+  modalBackdrop.setAttribute('aria-hidden','true');
+});
+
+saveDateBtn.addEventListener('click', () => {
+  const dval = dateInput.value;
+  const tval = timeInput.value || '00:00';
+  if(!dval){
+    alert('בחר תאריך תקין.');
+    return;
+  }
+  const [y,mo,da] = dval.split('-').map(Number);
+  const [hh,mm] = tval.split(':').map(Number);
+  const newTarget = new Date(y, mo-1, da, hh||0, mm||0, 0);
+  if(isNaN(newTarget)) { alert('תאריך לא תקין'); return; }
+  targetDate = newTarget;
+  // optional span
+  const spanVal = parseInt(countSpan.value,10);
+  if(!isNaN(spanVal) && spanVal>0) totalDays = spanVal;
+  // if no start exists in cookie, choose start = target - totalDays
+  const startCookie = getCookie('engage_start');
+  if(!startCookie){
+    startDate = new Date(targetDate.getTime() - (totalDays*24*60*60*1000));
+  } else {
+    // preserve existing start unless user wants reset; but if start is after target, reassign
+    if(!startDate || startDate.getTime() >= targetDate.getTime()){
+      startDate = new Date(targetDate.getTime() - (totalDays*24*60*60*1000));
+    }
+  }
+  saveSettings();
+  modalBackdrop.classList.remove('show');
+  modalBackdrop.setAttribute('aria-hidden','true');
+  updateUI(); // apply immediately
+});
+
+/* ------------------------------
+   Reset button — clears cookies & reloads defaults
+   ------------------------------ */
+resetBtn.addEventListener('click', () => {
+  if(!confirm('אתה בטוח שברצונך לאפס את כל ההגדרות?')) return;
+  eraseCookie('engage_bg');
+  eraseCookie('engage_target');
+  eraseCookie('engage_start');
+  eraseCookie('engage_span');
+  // reload defaults
+  targetDate = defaultTarget();
+  startDate = new Date(targetDate.getTime() - (30*24*60*60*1000));
+  totalDays = 30;
+  saveSettings();
+  bgWrapper.style.backgroundImage = '';
+  alert('הגדרות אופסו.');
+  updateUI();
+});
+
+/* ------------------------------
+   Compute remaining time & filling %
+   ------------------------------ */
+function computeDiffs(){
+  const now = new Date();
+  const diffMs = Math.max(0, targetDate.getTime() - now.getTime());
+  const diff = {
+    totalMs: diffMs,
+    days: Math.floor(diffMs / (24*60*60*1000)),
+  };
+  let rem = diffMs % (24*60*60*1000);
+  diff.hours = Math.floor(rem / (60*60*1000));
+  rem = rem % (60*60*1000);
+  diff.minutes = Math.floor(rem / (60*1000));
+  rem = rem % (60*1000);
+  diff.seconds = Math.floor(rem / 1000);
+  // fill percent
+  // totalDays: duration between startDate and targetDate in days
+  const totalMs = Math.max(1, targetDate.getTime() - startDate.getTime());
+  const elapsedMs = Math.max(0, now.getTime() - startDate.getTime());
+  // clamp
+  const rawPct = Math.min(1, Math.max(0, elapsedMs / totalMs));
+  const pct = Math.round(rawPct * 10000) / 100; // 2 decimals
+  return {...diff, pct, rawPct};
+}
+
+/* ------------------------------
+   Update UI every second
+   ------------------------------ */
+let lastCelebrate = false;
+function updateUI(){
+  const d = computeDiffs();
+
+  // set numbers
+  daysEl.textContent = String(d.days).padStart(2,'0');
+  hoursEl.textContent = String(d.hours).padStart(2,'0');
+  minutesEl.textContent = String(d.minutes).padStart(2,'0');
+  secondsEl.textContent = String(d.seconds).padStart(2,'0');
+
+  // filling: rect y/height in percent bottom-to-top
+  // the svg viewBox is 0..100 in y; we set rect y = 100 - (pct*1)
+  const pct = d.rawPct;
+  const height = Math.max(0, Math.min(1, pct)) * 100; // in %
+  const y = 100 - height;
+  // animate via attributes
+  fillRect.setAttribute('y', String(y));
+  fillRect.setAttribute('height', String(height));
+
+  // sparkle when > 60%
+  if(pct >= 0.6){
+    sparkle.classList.add('show');
+    // create some sparkle elements if none
+    if(!sparkle.querySelector('.s')){
+      for(let i=0;i<10;i++){
+        const sp = document.createElement('div');
+        sp.className = 's';
+        sp.style.left = Math.random()*80 + '%';
+        sp.style.top = Math.random()*80 + '%';
+        sp.style.fontSize = (8 + Math.random()*20) + 'px';
+        sp.textContent = '✦';
+        sp.style.animationDelay = (Math.random()*1.4) + 's';
+        sparkle.appendChild(sp);
+      }
+    }
+  } else {
+    sparkle.classList.remove('show');
+    sparkle.innerHTML = '';
+  }
+
+  // when reached target (all zeros) show celebration once
+  const reached = (d.totalMs === 0);
+  if(reached && !lastCelebrate){
+    doCelebrate();
+    lastCelebrate = true;
+  }
+  if(!reached) lastCelebrate = false;
+}
+
+/* ------------------------------
+   Confetti & celebration
+   ------------------------------ */
+function doCelebrate(){
+  // show message
+  celebrateMsg.classList.add('show');
+  setTimeout(()=> celebrateMsg.classList.remove('show'), 8000);
+  // simple emoji confetti using canvas
+  runEmojiConfetti(120);
+}
+
+/* emoji confetti implementation (lightweight) */
+function runEmojiConfetti(count=80){
+  const w = confettiCanvas.width = window.innerWidth;
+  const h = confettiCanvas.height = window.innerHeight;
+  confettiCanvas.style.display = 'block';
+  const ctx = confettiCanvas.getContext('2d');
+  const emojis = ['🎉','💍','❤️','🥳','✨','💫','🎊'];
+  const pieces = [];
+  for(let i=0;i<count;i++){
+    pieces.push({
+      x: Math.random()*w,
+      y: Math.random()*h - h,
+      vx: (Math.random()-0.5)*2,
+      vy: 1 + Math.random()*4,
+      size: 16 + Math.random()*28,
+      rot: Math.random()*360,
+      velRot: (Math.random()-0.5)*8,
+      emoji: emojis[Math.floor(Math.random()*emojis.length)]
+    });
+  }
+  let t0 = null;
+  function frame(ts){
+    if(!t0) t0 = ts;
+    const dt = ts - t0;
+    t0 = ts;
+    ctx.clearRect(0,0,w,h);
+    for(const p of pieces){
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.velRot;
+      ctx.save();
+      ctx.translate(p.x,p.y);
+      ctx.rotate(p.rot * Math.PI/180);
+      ctx.font = `${p.size}px serif`;
+      ctx.fillText(p.emoji, 0, 0);
+      ctx.restore();
+    }
+    // stop after ~7s
+    if(dt < 7000){
+      requestAnimationFrame(frame);
+    } else {
+      ctx.clearRect(0,0,w,h);
+      confettiCanvas.style.display = 'none';
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ------------------------------
+   Boot sequence
+   ------------------------------ */
+loadSettings();
+updateUI();
+setInterval(updateUI, 1000);
+
+/* ------------------------------
+   Make the app resilient offline: prevent external network calls used only for fonts.
+   Note: Google Fonts link is included above; for full offline operation host the font locally.
+   ------------------------------ */
+
+/* ------------------------------
+   On resize adjust canvas
+   ------------------------------ */
+window.addEventListener('resize', ()=> {
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+});
+
+/* ------------------------------
+   Accessibility & keyboard: Esc to close modal
+   ------------------------------ */
+window.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape'){
+    modalBackdrop.classList.remove('show');
+    modalBackdrop.setAttribute('aria-hidden','true');
+  }
+});
+</script>
+</body>
+</html>
