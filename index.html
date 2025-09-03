@@ -113,7 +113,8 @@ h1{
   stroke-linejoin:round;
   fill: none;
   filter: blur(0.6px) drop-shadow(0 0 14px rgba(255,215,0,0.55));
-  opacity:0.95;
+  /* opacity:0.95; */
+  z-index: 1000;
 }
 
 /* translucent glass heart background */
@@ -129,6 +130,7 @@ h1{
   opacity: var(--heart-fill-opacity);
   mix-blend-mode:screen;
   transition: all 800ms cubic-bezier(.2,.9,.2,1);
+  z-index: -100;
 }
 
 /* center panel inside heart for counters */
@@ -536,9 +538,9 @@ function saveSettings(){
 }
 
 /* ------------------------------
-   Resize and limit uploaded image, convert to dataURL, save to cookie
+   Resize and limit uploaded image, convert to dataURL
    ------------------------------ */
-function imageFileToDataURL(file, maxSize=900, quality=0.66){
+function imageFileToDataURL(file, maxSize = 2000, quality = 0.9) { // increased quality
   return new Promise((resolve, reject) => {
     const img = new Image();
     const fr = new FileReader();
@@ -547,22 +549,22 @@ function imageFileToDataURL(file, maxSize=900, quality=0.66){
         // resize preserving aspect ratio
         const canvas = document.createElement('canvas');
         let w = img.width, h = img.height;
-        if(Math.max(w,h) > maxSize){
-          const ratio = maxSize / Math.max(w,h);
+        if (Math.max(w, h) > maxSize) {
+          const ratio = maxSize / Math.max(w, h);
           w = Math.round(w * ratio);
           h = Math.round(h * ratio);
         }
         canvas.width = w;
         canvas.height = h;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img,0,0,w,h);
+        ctx.drawImage(img, 0, 0, w, h);
         try {
           const dataURL = canvas.toDataURL('image/jpeg', quality);
           resolve(dataURL);
-        } catch(e){
+        } catch (e) {
           reject(e);
         }
-      }
+      };
       img.onerror = () => reject(new Error('image load error'));
       img.src = fr.result;
     };
@@ -570,28 +572,62 @@ function imageFileToDataURL(file, maxSize=900, quality=0.66){
     fr.readAsDataURL(file);
   });
 }
+/* ------------------------------
+   Save image in localStorage for 30 days
+   ------------------------------ */
+function saveImageToLocalStorage(key, dataURL, days = 30) {
+  const expireDate = new Date();
+  expireDate.setTime(expireDate.getTime() + days * 24 * 60 * 60 * 1000);
+  const item = {
+    data: dataURL,
+    expiry: expireDate.getTime()
+  };
+  localStorage.setItem(key, JSON.stringify(item));
+}
+
+/* ------------------------------
+   Load image from localStorage
+   ------------------------------ */
+function loadImageFromLocalStorage(key) {
+  const itemStr = localStorage.getItem(key);
+  if (!itemStr) return null;
+
+  const item = JSON.parse(itemStr);
+  const now = new Date().getTime();
+  if (now > item.expiry) {
+    localStorage.removeItem(key);
+    return null;
+  }
+  return item.data;
+}
+
+/* ------------------------------
+   Initialize background from localStorage
+   ------------------------------ */
+const storedBG = loadImageFromLocalStorage('engage_bg');
+if (storedBG) {
+  bgWrapper.style.backgroundImage = `url("${storedBG}")`;
+}
 
 /* ------------------------------
    Event: upload background
    ------------------------------ */
 uploadInput.addEventListener('change', async (ev) => {
   const file = ev.target.files && ev.target.files[0];
-  if(!file) return;
+  if (!file) return;
   try {
-    // convert & resize to reduce cookie size
-    const dataURL = await imageFileToDataURL(file, 900, 0.66);
-    bgWrapper.style.backgroundImage = 'url("'+dataURL+'")';
-    // set cookie
-    setCookie('engage_bg', dataURL, 30);
+    // convert & resize to reduce storage size
+    const dataURL = await imageFileToDataURL(file, 900, 0.9); // higher quality
+    bgWrapper.style.backgroundImage = `url("${dataURL}")`;
+    saveImageToLocalStorage('engage_bg', dataURL, 30);
     alert('רקע נשמר בהצלחה לזמן של 30 יום.');
-  } catch(e){
+  } catch (e) {
     console.error(e);
     alert('שגיאה בהעלאת התמונה — נסה בגודל / פורמט אחר.');
   } finally {
     uploadInput.value = '';
   }
 });
-
 /* ------------------------------
    Modal: change date/time
    ------------------------------ */
@@ -691,6 +727,28 @@ function computeDiffs(){
   const pct = Math.round(rawPct * 10000) / 100; // 2 decimals
   return {...diff, pct, rawPct};
 }
+
+function setBackgroundFromLocalStorage() {
+  const itemStr = localStorage.getItem('engage_bg');
+  if (!itemStr) return; // no image stored
+
+  const item = JSON.parse(itemStr);
+  const now = new Date().getTime();
+  if (now > item.expiry) {
+    localStorage.removeItem('engage_bg'); // expired
+    return;
+  }
+
+  // set as background
+  const bgWrapper = document.getElementById('bgWrapper'); // replace with your wrapper element
+  if (bgWrapper) {
+    bgWrapper.style.backgroundImage = `url("${item.data}")`;
+  }
+}
+
+// run on page load
+window.addEventListener('DOMContentLoaded', setBackgroundFromLocalStorage);
+
 
 /* ------------------------------
    Update UI every second
