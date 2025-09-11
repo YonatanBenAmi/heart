@@ -337,6 +337,10 @@ html,body {
 
 <div class="bg-wrapper" id="bgWrapper"></div>
 <div class="bg-overlay"></div>
+<audio id="bg-music" loop>
+    <source src="ben_snuf.mp3" type="audio/mpeg">
+    הדפדפן שלך לא תומך בניגון אודיו
+</audio>
 
 
 <div class="container">
@@ -453,6 +457,20 @@ html,body {
 <canvas id="confettiCanvas" style="position:fixed; inset:0; pointer-events:none; z-index:210; display:none;"></canvas>
 
 <script>
+  //audio
+  const music = document.getElementById("bg-music");
+
+  function enableMusic() {
+    music.play().catch(err => console.log("הדפדפן חסם הפעלה:", err));
+    // מסירים את המאזינים אחרי הפעלה ראשונה
+    document.removeEventListener("click", enableMusic);
+    document.removeEventListener("scroll", enableMusic);
+  }
+
+  // מפעיל את המוזיקה עם פעולה ראשונה של המשתמש
+  document.addEventListener("click", enableMusic);
+  document.addEventListener("scroll", enableMusic);
+
 /* ------------------------------
    Utilities: Cookies (30 days)
    ------------------------------ */
